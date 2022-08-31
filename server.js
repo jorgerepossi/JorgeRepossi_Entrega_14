@@ -1,5 +1,5 @@
 /**
- * Entrega 14 - Clase 28
+ * Entrega 14 - Clase 24
  * 28. Global & Child process
  * Alumno: Jo Repossi
  * Backend: NodeJS
@@ -18,15 +18,13 @@ const connectMongo = require("connect-mongo");
 const session = require("express-session");
 const exphbs = require("express-handlebars");
 
-require('dotenv').config('.env');
+require("dotenv").config(".env");
 const parse = require("yargs/yargs");
-const process = require('process');
+const process = require("process");
 const { fork } = require("child_process");
 
 const productsController = require("./src/controller/productController");
 const messagesController = require("./src/controller/messageController");
-
-
 
 const options = { useNewUrlParser: true, useUnifiedTopology: true };
 const MongoStore = connectMongo.create({
@@ -88,22 +86,23 @@ app.use(
 );
 
 app.use("/", require("./src/routes/login"));
+app.use("/api/randoms", require("./src/routes/random"));
 
 app.get("/info", (req, res) => {
   res.json(server_info);
 });
 
-
-
-app.get("/api/randoms", (req, res) => {
-	const cant = req.query.cant || 1000000;
-	const child = fork(path.resolve(process.cwd(), "./src/controller/randomNumberController.js"));
-	child.send(cant);
-  child.on("message", msg => {
+/* app.get("/api/randoms", (req, res) => {
+  const cant = req.query.cant || 1000000;
+  const child = fork(
+    path.resolve(process.cwd(), "./src/controller/randomNumberController.js")
+  );
+  child.send(cant);
+  child.on("message", (msg) => {
     res.json({ numeros: msg });
   });
 });
-
+ */
 io.on("connection", (socket) => {
   socket.emit("socketConnected");
 
