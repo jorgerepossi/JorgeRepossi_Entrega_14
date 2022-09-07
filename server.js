@@ -1,11 +1,12 @@
+/* eslint-disable no-unused-vars */
 /**
- * Entrega 14 - Clase 24
- * 28. Global & Child process
+ * Entrega 15 - Clase 30
+ * 30. PROXY & NGINX
  * Alumno: Jo Repossi
  * Backend: NodeJS
  * Comisión 30995
  * Profesor: Diego Jofre
- * Fecha: Martes 30 Agosto 2022
+ * Fecha: Martes 06 Septiembre 2022
  */
 
 const express = require("express");
@@ -21,7 +22,12 @@ const exphbs = require("express-handlebars");
 require("dotenv").config(".env");
 const parse = require("yargs/yargs");
 const process = require("process");
-const { fork } = require("child_process");
+
+
+const  { fork } = require("child_process");
+const  cluster = require("cluster"); 
+const  os = require( "os");
+
 
 const productsController = require("./src/controller/productController");
 const messagesController = require("./src/controller/messageController");
@@ -33,25 +39,39 @@ const MongoStore = connectMongo.create({
   ttl: 60,
 });
 
-const app = express();
-
-const httpServer = new HttpServer(app);
-const io = new IOServer(httpServer);
-
+const numCPUs = os.cpus().length;
 const yargs = parse(process.argv.slice(2));
+const { port, mode, _ } = yargs
+	.boolean("debug")
+	.alias({
+		m: "mode",
+		p: "port",
+		// d: 'debug'
+	})
+	.default({
+		mode: "FORK",
+		port: 8080,
+		// debug: false
+	}).argv;
 
-const { port, _ } = yargs
-  .boolean("debug")
-  .alias({
-    // m: 'modo',
-    p: "port",
-    // d: 'debug'
-  })
-  .default({
-    // modo: 'prod',
-    port: 8080,
-    // debug: false
-  }).argv;
+/* MASTER ---------------------------------------*/
+if (mode === "CLUSTER" && cluster.isPrimary) cluster_mode();
+
+function cluster_mode() {
+	console.log(numCPUs);
+	console.log(`PID MASTER ${process.pid}`);
+
+	for (let i = 0; i < numCPUs; i++) {
+		cluster.fork();
+	}
+
+	cluster.on("exit", (worker) => {
+		console.log("Worker", worker.process.pid, "died", new Date().toLocaleString());
+		cluster.fork();
+	});
+
+	return false;
+}
 
 const server_info = {
   arguments: process.argv.slice(2),
@@ -62,6 +82,10 @@ const server_info = {
   process_id: process.pid,
   current_working_directory: process.cwd(),
 };
+const app = express();
+
+const httpServer = new HttpServer(app);
+const io = new IOServer(httpServer);
 
 app.set("view engine", "handlebars");
 
@@ -92,17 +116,7 @@ app.get("/info", (req, res) => {
   res.json(server_info);
 });
 
-/* app.get("/api/randoms", (req, res) => {
-  const cant = req.query.cant || 1000000;
-  const child = fork(
-    path.resolve(process.cwd(), "./src/controller/randomNumberController.js")
-  );
-  child.send(cant);
-  child.on("message", (msg) => {
-    res.json({ numeros: msg });
-  });
-});
- */
+
 io.on("connection", (socket) => {
   socket.emit("socketConnected");
 
